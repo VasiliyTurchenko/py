@@ -62,12 +62,20 @@ if check_file_exists(keil_proj_file) == 0:
     print("Error! Can't find Keil project file " + str(keil_proj_file))
     exit(-2)
 
+#check is file .uvprojx or not
+spl = os.path.splitext(str(keil_proj_file))
+debug_print(spl)
+if spl[1] != ".uvprojx":
+    print("Error! Can't find Keil project file " + spl[0] + ".uvprojx")
+    exit(-3)
+
 cmake_dir_n = sys.argv[2]
 debug_print(cmake_dir_n)
 cmake_dir = Path(cmake_dir_n)
 if check_dir_exists(cmake_dir) == 0:
     print("Error! Can't find target directory " + str(cmake_dir))
-    exit(-2)
+    exit(-4)
+
 
 
 
