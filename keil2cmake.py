@@ -57,8 +57,8 @@ def check_dir_exists(d):
 
 ##### XML #####
 def trim_XML_braces(text):
-    s1 = text.split('>')
-    s2 = s1[1].split('<')
+    s1 = str(text).split('>')
+    s2 = str(s1[1]).split('<')
     return s2[0]
 
 # parses file entry

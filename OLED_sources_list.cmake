@@ -37,34 +37,34 @@ set	(GROUP_SRC_APPLICATION_USER
 		../Src/dma.c
 		../Src/main.c
 		../Src/i2c.c
-		../Src/hex_gen.c
+		..//Src//hex_gen.c
 		../Src/rtc.c
-		../Src/data_acquisition.c
-#		../Inc/nctrl.h
-		../Src/MPVV436744-013.c
+		..//Src//data_acquisition.c
+#		..//Inc//nctrl.h
+		..//Src//MPVV436744-013.c
 		../Src/adc.c
-		../Src/Ana_board.c
-		../Src/my_comm.c
-		../Src/xprintf.c
-#		../Inc/globaldef.h
-		../Src/ftoa.c
+		..//Src//Ana_board.c
+		..//Src//my_comm.c
+		..//Src//xprintf.c
+#		..//Inc//globaldef.h
+		..//Src//ftoa.c
 		../Src/freertos.c
 		../Src/stm32f1xx_hal_timebase_TIM.c
-		../Src/enc28j60.c
-		../Src/lan.c
-		../Src/MQTT_SN_task.c
-		../Src/json.c
-		../Src/watchdog.c
+		..//Src//enc28j60.c
+		..//Src//lan.c
+		..//Src//MQTT_SN_task.c
+		..//Src//json.c
+		..//Src//watchdog.c
 		../Src/iwdg.c
-		../Src/ntp.c
-		../Src/nvmem.c
-		../Src/conf_fn.c
+		..//Src//ntp.c
+		..//Src//nvmem.c
+		..//Src//conf_fn.c
 		../Src/crc.c
-		../Src/tftp_server.c
-		../Src/mystrcpy.c
-		../Src/TFTP_ser_desesr.c
-#		../Inc/TFTP_data.h
-#		../Inc/debug_settings.h
+		..//Src//tftp_server.c
+		..//Src//mystrcpy.c
+		..//Src//TFTP_ser_desesr.c
+#		..//Inc//TFTP_data.h
+#		..//Inc//debug_settings.h
 	)
 
 set	(GROUP_SRC_APPLICATION_MDK_ARM
@@ -83,18 +83,18 @@ set	(GROUP_SRC_MIDDLEWARES_FREERTOS
 	)
 
 set	(GROUP_SRC_MQTTSNPACKET
-		../Src/MQTTSNPacket/MQTTSNConnectClient.c
-		../Src/MQTTSNPacket/MQTTSNConnectServer.c
-		../Src/MQTTSNPacket/MQTTSNDeserializePublish.c
-		../Src/MQTTSNPacket/MQTTSNPacket.c
-		../Src/MQTTSNPacket/MQTTSNSearchClient.c
-		../Src/MQTTSNPacket/MQTTSNSearchServer.c
-		../Src/MQTTSNPacket/MQTTSNSerializePublish.c
-		../Src/MQTTSNPacket/MQTTSNSubscribeClient.c
-		../Src/MQTTSNPacket/MQTTSNSubscribeServer.c
-		../Src/MQTTSNPacket/MQTTSNUnsubscribeClient.c
-		../Src/MQTTSNPacket/MQTTSNUnsubscribeServer.c
-#		../Inc/MQTTSNPacket/StackTrace.h
+		..//Src//MQTTSNPacket//MQTTSNConnectClient.c
+		..//Src//MQTTSNPacket//MQTTSNConnectServer.c
+		..//Src//MQTTSNPacket//MQTTSNDeserializePublish.c
+		..//Src//MQTTSNPacket//MQTTSNPacket.c
+		..//Src//MQTTSNPacket//MQTTSNSearchClient.c
+		..//Src//MQTTSNPacket//MQTTSNSearchServer.c
+		..//Src//MQTTSNPacket//MQTTSNSerializePublish.c
+		..//Src//MQTTSNPacket//MQTTSNSubscribeClient.c
+		..//Src//MQTTSNPacket//MQTTSNSubscribeServer.c
+		..//Src//MQTTSNPacket//MQTTSNUnsubscribeClient.c
+		..//Src//MQTTSNPacket//MQTTSNUnsubscribeServer.c
+#		..//Inc//MQTTSNPacket//StackTrace.h
 	)
 
 set	(GROUP_SRC___CMSIS
