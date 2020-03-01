@@ -21,6 +21,7 @@ from string import whitespace
 debug_print_enabled = 0
 #
 out_file_name = "sources_list.cmake"
+exec_name = "EXEC_NAME"
 
 # debug print
 def debug_print(text):
@@ -340,17 +341,20 @@ def write_LIST_OF_SOURCES(ofile, groups):
         writeln(ofile, comm + "\t\tGROUP_SRC_" + g.gname)
     writeln(ofile, "\t)\n")
 
+    writeln(ofile, "target_sources(" + "${" + exec_name + "}" + " PRIVATE ${LIST_OF_SOURCES})\n") 
+
+
 # 
 def write_defs(ofile, dic):
     s_out = "set(MCU "+ dic['MCU'] +")"
     writeln(ofile, s_out)
 #    debug_print(s_out)
 # c defs
-    s_out = "target_compile_definitions(${TARGET_NAME} PRIVATE " + dic['TARGET_C_DEFINES'] + ")"
+    s_out = "target_compile_definitions(" + "${" + exec_name + "}" + " PRIVATE " + dic['TARGET_C_DEFINES'] + ")"
     writeln(ofile, s_out)
 
 # asm defs
-    s_out = "target_compile_definitions(${TARGET_NAME} PRIVATE " + dic['TARGET_ASM_DEFINES'] + ")"
+    s_out = "target_compile_definitions(" + "${" + exec_name + "}" + " PRIVATE " + dic['TARGET_ASM_DEFINES'] + ")"
     writeln(ofile, s_out)
 
 # c undefs
@@ -359,7 +363,7 @@ def write_defs(ofile, dic):
     if len(c_undef) > 0:
         c_undef = " " + c_undef
         c_undef = c_undef.replace(" ", " -U")
-        s_out = "target_compile_options(${TARGET_NAME} PRIVATE " + c_undef + ")"
+        s_out = "target_compile_options(" + "${" + exec_name + "}" + " PRIVATE " + c_undef + ")"
         writeln(ofile, s_out)
 
 # asm undefs
@@ -367,7 +371,7 @@ def write_defs(ofile, dic):
     if len(a_undef) > 0:
         a_undef = " " + a_undef
         a_undef = a_undef.replace(" ", " -U")
-        s_out = "target_compile_options(${TARGET_NAME} PRIVATE " + a_undef + ")"
+        s_out = "target_compile_options(" + "${" + exec_name + "}" + " PRIVATE " + a_undef + ")"
         writeln(ofile, s_out)
     
     return
@@ -376,7 +380,7 @@ def write_defs(ofile, dic):
 def write_incs(ofile, in_string):
     splitted = in_string.split(";")
     for s in splitted:
-        s_out = "target_include_directories(${TARGET_NAME} PRIVATE " + s.replace("\\","/").strip(whitespace) + ")"
+        s_out = "target_include_directories(" + "${" + exec_name + "}" + " PRIVATE " + s.replace("\\","/").strip(whitespace) + ")"
         writeln(ofile, s_out)
         debug_print(s_out)
     writeln(ofile, "")
