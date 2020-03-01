@@ -18,14 +18,7 @@ from colorama import Fore, Back, Style
 from string import whitespace
 
 #debug print control
-debug_print_enabled = 1
-
-# includes list
-include_dirs = set()
-
-# sources list
-source_files = set()
-
+debug_print_enabled = 0
 #
 out_file_name = "sources_list.cmake"
 
@@ -353,21 +346,29 @@ def write_defs(ofile, dic):
     writeln(ofile, s_out)
 #    debug_print(s_out)
 # c defs
-    s_out = "target_compile_definitions(${TARGET_NAME} PUBLIC " + dic['TARGET_C_DEFINES'] + ")"
+    s_out = "target_compile_definitions(${TARGET_NAME} PRIVATE " + dic['TARGET_C_DEFINES'] + ")"
     writeln(ofile, s_out)
 
 # asm defs
-    s_out = "target_compile_definitions(${TARGET_NAME} PUBLIC " + dic['TARGET_ASM_DEFINES'] + ")"
+    s_out = "target_compile_definitions(${TARGET_NAME} PRIVATE " + dic['TARGET_ASM_DEFINES'] + ")"
     writeln(ofile, s_out)
 
 # c undefs
-    s_out = "set(C_UNDEF " + dic['TARGET_C_UNDEFINES'] + ")"
-    writeln(ofile, s_out)
+# is there any of them?    
+    c_undef = dic['TARGET_C_UNDEFINES']
+    if len(c_undef) > 0:
+        c_undef = " " + c_undef
+        c_undef = c_undef.replace(" ", " -U")
+        s_out = "target_compile_options(${TARGET_NAME} PRIVATE " + c_undef + ")"
+        writeln(ofile, s_out)
 
 # asm undefs
-    s_out = "set(ASM_UNDEF " + dic['TARGET_ASM_UNDEFINES'] + ")"
-    writeln(ofile, s_out)
-    
+    a_undef = dic['TARGET_ASM_UNDEFINES']
+    if len(a_undef) > 0:
+        a_undef = " " + a_undef
+        a_undef = a_undef.replace(" ", " -U")
+        s_out = "target_compile_options(${TARGET_NAME} PRIVATE " + a_undef + ")"
+        writeln(ofile, s_out)
     
     return
 
@@ -375,7 +376,7 @@ def write_defs(ofile, dic):
 def write_incs(ofile, in_string):
     splitted = in_string.split(";")
     for s in splitted:
-        s_out = "target_include_directories(${TARGET_NAME} PUBLIC " + s.replace("\\","/").strip(whitespace) + ")"
+        s_out = "target_include_directories(${TARGET_NAME} PRIVATE " + s.replace("\\","/").strip(whitespace) + ")"
         writeln(ofile, s_out)
         debug_print(s_out)
     writeln(ofile, "")
@@ -441,7 +442,7 @@ def main():
 
 ###############################################################################
 if __name__ == "__main__":
-    sys.argv = ["keil2cmake.py", "G:\py\manchester_loop.uvprojx", "G:\py\\"]
+    sys.argv = ["keil2cmake.py", "G:\py\c1.uvprojx", "G:\py\\"]
     init()
     main()
 
