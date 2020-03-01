@@ -25,14 +25,14 @@ include_dirs = set()
 # sources list
 source_files = set()
 
-# 
+#
 out_file_name = "sources_list.cmake"
 
 # debug print
 def debug_print(text):
     if debug_print_enabled == 1:
         print(text)
- 
+
 # print usage
 def usage():
     print("Usage " + sys.argv[0] + " <Keil_proj_file> " + " <target_path> \n")
@@ -61,12 +61,48 @@ def trim_XML_braces(text):
     s2 = str(s1[1]).split('<')
     return s2[0]
 
+#recursive function
+def rec_opt(node):
+    retval = {}
+    try:
+        iterator = iter(node)
+    except TypeError:
+        # not iterable
+        print("not iterable")
+    else:
+        # iterable
+        for s in node:
+            key = s.tag
+            val = ET.tostring(s)
+            val = trim_XML_braces(val)
+            retval[key] = val
+#            debug_print(str(key) + " = "+ str(retval[key]))
+            retval.update(rec_opt(s))
+    return retval
+
+# file/group option detect
+def proc_opt(node, opt_name):
+    retval = rec_opt(node)
+#    print(retval)
+    return retval
+
+# keil project file types
+# 1 - c file
+# 2 - asm file
+# 3 - object file
+# 4 - library file
+# 5 - text file
+# 6 - custom file
+# 7 - c++ file
+# 8 - image file
+
 # parses file entry
 def parse_FILE_node(fnode):
-    File_entry = namedtuple('File_entry', 'fname ftype fpath')
+    File_entry = namedtuple('File_entry', 'fname ftype fpath fopt')
     fname = ""
     ftype = 0
     fpath = ""
+    fopt = {}
     for s in fnode:
         if s.tag == 'FileName':
             fname = ET.tostring(s)
@@ -78,15 +114,19 @@ def parse_FILE_node(fnode):
             fpath = ET.tostring(s)
             fpath = trim_XML_braces(fpath)
             fpath = fpath.replace("\\", "/")
-    retval = File_entry(fname, ftype, fpath)
+        if s.tag == 'FileOption':
+#            debug_print("file option detected")
+            fopt = proc_opt(s, "FileOption")
+    retval = File_entry(fname, ftype, fpath, fopt)
 #    debug_print(retval)
     return retval
 
-# parses group of source files    
+# parses group of source files
 def parse_GROUP_node(gnode):
-    Group = namedtuple('Group', 'gname files')
+    Group = namedtuple('Group', 'gname files gopt')
     gname = ""
-#set of filenames, filetypes, filepaths    
+    gopt = {}
+#set of filenames, filetypes, filepaths
     fileset = list()
     for s in gnode:
         if s.tag == 'GroupName':
@@ -101,13 +141,102 @@ def parse_GROUP_node(gnode):
             for ss in s:
                 if ss.tag == 'File':
                     fileset.append(parse_FILE_node(ss))
-        retval = Group(gname, fileset)
+        if s.tag == 'GroupOption':
+#            debug_print("group option detected")
+            gopt = proc_opt(s, "GroupOption")
+        retval = Group(gname, fileset, gopt)
 #    debug_print(retval)
     return retval
 
+
+# dig into xml hierarchy
+# we need to go deeper
+# tag_list - list of tags to traverse through
+def dig_in(tag_list, node):
+    L = len(tag_list)
+    found = 0
+    curr_node = node
+    i = 0
+#    debug_print("L = " + str(L))
+    while i < L:
+        found = 0
+#       debug_print("i = " + str(i))
+        for a in curr_node:
+#            debug_print (type(node))
+            if a.tag == tag_list[i]:
+                i = i + 1
+                curr_node = a
+                found = 1
+#               debug_print (a.tag + " <> " + tag_list[i - 1] + " i = " + str(i))
+                break
+        if found == 0:
+        # tags did not match
+            break
+    if (i == L ) and (found == 1):
+#        debug_print ("dig_in(): found: " + ET.tostring(curr_node))
+        return 1, curr_node
+    else:
+#        debug_print ("dig_in(): not found")
+        return 0, node
+
 # parsed target options
 def parse_TARGET_OPTIONS(opt_node):
-    return set()
+    retval = {}
+    dev = opt_node.findall("./TargetCommonOption/Device")
+    print(dev[0])
+    mcu = ET.tostring(dev[0])
+    mcu = trim_XML_braces(mcu)
+    print(mcu)
+    retval['MCU'] = mcu
+
+#extract C defines 
+    dig_list = ['TargetArmAds', 'Cads', 'VariousControls', 'Define']
+    res, node = dig_in(dig_list, opt_node)
+    if res == 1:
+        cdefs = trim_XML_braces(ET.tostring(node)).replace(",", " ").strip()
+        debug_print ("parse_TARGET_OPTIONS() : cdefs = " + cdefs)
+        retval['TARGET_C_DEFINES'] = cdefs
+#extract C undefines
+    dig_list = ['TargetArmAds', 'Cads', 'VariousControls', 'Undefine']
+    res, node = dig_in(dig_list, opt_node)
+    if res == 1:
+        cundefs = trim_XML_braces(ET.tostring(node)).replace(",", " ").strip()
+        debug_print ("parse_TARGET_OPTIONS() : cundefs = " + cundefs)
+        retval['TARGET_C_UNDEFINES'] = cundefs
+        
+#extract ASM defines         
+    dig_list = ['TargetArmAds', 'Aads', 'VariousControls', 'Define']
+    res, node = dig_in(dig_list, opt_node)
+    if res == 1:
+        adefs = trim_XML_braces(ET.tostring(node)).replace(",", " ").strip()
+        debug_print ("parse_TARGET_OPTIONS() : adefs = " + adefs)
+        retval['TARGET_ASM_DEFINES'] = adefs
+
+#extract ASM undefines         
+    dig_list = ['TargetArmAds', 'Aads', 'VariousControls', 'Undefine']
+    res, node = dig_in(dig_list, opt_node)
+    if res == 1:
+        aundefs = trim_XML_braces(ET.tostring(node)).replace(",", " ").strip()
+        debug_print ("parse_TARGET_OPTIONS() : aundefs = " + aundefs)
+        retval['TARGET_ASM_UNDEFINES'] = aundefs
+        
+#extract C include dirs
+    dig_list = ['TargetArmAds', 'Cads', 'VariousControls', 'IncludePath']
+    res, node = dig_in(dig_list, opt_node)
+    if res == 1:
+        c_inc = trim_XML_braces(ET.tostring(node)).replace(",", " ").strip()
+        debug_print ("parse_TARGET_OPTIONS() : c_inc = " + c_inc)
+        retval['C_INC_DIRS'] = c_inc
+
+#extract ASM include dirs
+    dig_list = ['TargetArmAds', 'Aads', 'VariousControls', 'IncludePath']
+    res, node = dig_in(dig_list, opt_node)
+    if res == 1:
+        a_inc = trim_XML_braces(ET.tostring(node)).replace(",", " ").strip()
+        debug_print ("parse_TARGET_OPTIONS() : a_inc = " + a_inc)
+        retval['A_INC_DIRS'] = a_inc
+
+    return retval
 
 # parses target
 def parse_TARGET(tnode):
@@ -116,7 +245,7 @@ def parse_TARGET(tnode):
 #                                               options for the target
     Target = namedtuple('Target', 'tname tgroups toptions')
     tname = ""
-    toptions = set()
+    toptions = {}
     tgroups = list()
     for s in tnode:
         if s.tag == 'TargetName':
@@ -130,8 +259,27 @@ def parse_TARGET(tnode):
                     newgroup = (parse_GROUP_node(ss))
                     tgroups.append(newgroup)
     retval = Target(tname, tgroups, toptions)
-#    debug_print(retval)    
+#    debug_print(retval)
     return retval
+
+# checks IncludeInBuild key in properties
+def check_IncludeInBuild(prop):
+    inc_key = prop.get('IncludeInBuild')
+    retval = 1
+    if  inc_key:
+        if inc_key != '1':
+            retval = 0
+    return retval
+
+# get custom text key in properties
+def get_custom_text(prop, key):
+    text = prop.get(key)
+    retval = ""
+    if text:
+        if not text.startswith("\n"):
+            retval = text
+    return retval
+
 
 # create output file
 def check_outfile(n):
@@ -151,8 +299,26 @@ def write_lists(ofile, groups):
     for g in groups:
         writeln(ofile, "set\t(GROUP_SRC_" + g.gname)
         for f in g.files:
+# does this file have custom includes?
+            ip = get_custom_text(f.fopt, 'IncludePath')
+            if ip != "":
+                print(Fore.YELLOW + Style.BRIGHT + "\nWarning! " + Style.RESET_ALL + "The file " + Style.BRIGHT + f.fpath + Style.RESET_ALL + " has custom include path!")
+                writeln(ofile, "\n# >>>> custom include!\t\t" + ip)
+
+            define = get_custom_text(f.fopt, 'Define')
+            if define != "":
+                print(Fore.YELLOW + Style.BRIGHT + "\nWarning! " + Style.RESET_ALL + "The file " + Style.BRIGHT + f.fpath + Style.RESET_ALL + " has custom defines!")
+                writeln(ofile, "\n# >>>> custom defines!\t\t" + define)
+
+            undefine = get_custom_text(f.fopt, 'Undefine')
+            if undefine != "":
+                print(Fore.YELLOW + Style.BRIGHT + "\nWarning! " + Style.RESET_ALL + "The file " + Style.BRIGHT + f.fpath + Style.RESET_ALL + " has custom undefines!")
+                writeln(ofile, "\n# >>>> custom undefines!\t\t" + undefine)
+
             comm = ""
-            if int(f.ftype) != 1:
+            if (int(f.ftype) != 1) and (int(f.ftype) != 7):
+                comm = "#"
+            if check_IncludeInBuild(f.fopt) != 1:
                 comm = "#"
             writeln(ofile, comm + "\t\t" + f.fpath)
         writeln(ofile, "\t)\n")
@@ -161,8 +327,63 @@ def write_lists(ofile, groups):
 def write_LIST_OF_SOURCES(ofile, groups):
     writeln(ofile, "set\t(LIST_OF_SOURCES")
     for g in groups:
-        writeln(ofile, "\t\tGROUP_SRC_" + g.gname) 
+
+# does not work!     
+        define = get_custom_text(g.gopt, 'Define')
+        if define != "":
+            print(Fore.YELLOW + Style.BRIGHT + "\nWarning! " + Style.RESET_ALL + "The group " + Style.BRIGHT + g.gname + Style.RESET_ALL + " has custom defines!")
+            writeln(ofile, "\n# >>>> custom defines!\t\t" + define)
+
+        undefine = get_custom_text(g.gopt, 'Undefine')
+        if undefine != "":
+            print(Fore.YELLOW + Style.BRIGHT + "\nWarning! " + Style.RESET_ALL + "The group " + Style.BRIGHT + g.gname + Style.RESET_ALL + " has custom undefines!")
+            writeln(ofile, "\n# >>>> custom undefines!\t\t" + undefine)
+#^^^^^^^^^^^^^^^
+    
+        comm = ""
+        if check_IncludeInBuild(g.gopt) != 1:
+            comm = "#"
+        writeln(ofile, comm + "\t\tGROUP_SRC_" + g.gname)
     writeln(ofile, "\t)\n")
+
+# 
+def write_defs(ofile, dic):
+    s_out = "set(MCU "+ dic['MCU'] +")"
+    writeln(ofile, s_out)
+#    debug_print(s_out)
+# c defs
+    s_out = "target_compile_definitions(${TARGET_NAME} PUBLIC " + dic['TARGET_C_DEFINES'] + ")"
+    writeln(ofile, s_out)
+
+# asm defs
+    s_out = "target_compile_definitions(${TARGET_NAME} PUBLIC " + dic['TARGET_ASM_DEFINES'] + ")"
+    writeln(ofile, s_out)
+
+# c undefs
+    s_out = "set(C_UNDEF " + dic['TARGET_C_UNDEFINES'] + ")"
+    writeln(ofile, s_out)
+
+# asm undefs
+    s_out = "set(ASM_UNDEF " + dic['TARGET_ASM_UNDEFINES'] + ")"
+    writeln(ofile, s_out)
+    
+    
+    return
+
+# writes target include directories
+def write_incs(ofile, in_string):
+    splitted = in_string.split(";")
+    for s in splitted:
+        s_out = "target_include_directories(${TARGET_NAME} PUBLIC " + s.replace("\\","/").strip() + ")"
+        writeln(ofile, s_out)
+        debug_print(s_out)
+    writeln(ofile, "")
+    return
+
+# writes TARGET_NAME variable
+def write_target_name(ofile, tname):
+    s_out = "set(TARGET_NAME " + tname + ")\n"
+    writeln(ofile, s_out)
 
 def main():
 # check arguments
@@ -199,12 +420,17 @@ def main():
             for child2 in child:
                 if child2.tag == 'Target':
                     a = parse_TARGET(child2)
-                    debug_print(a)
 # generate cmake list for the target
                     ofile = check_outfile(a.tname + "_" + out_file_name)
-                    debug_print(ofile)
-# #open and reset output file
+# open and reset output file
                     text_file = open(str(ofile), "w+")
+# write target name
+                    write_target_name(text_file, a.tname)
+# write defines for the target, and undefines
+                    write_defs(text_file, a.toptions)
+# wrile include directories
+                    write_incs(text_file, a.toptions['C_INC_DIRS'])
+                    write_incs(text_file, a.toptions['A_INC_DIRS'])
 # write cmake lists of sources to the outfile
                     write_lists(text_file, a.tgroups)
                     write_LIST_OF_SOURCES(text_file, a.tgroups)
@@ -214,7 +440,8 @@ def main():
 
 ###############################################################################
 if __name__ == "__main__":
+    sys.argv = ["keil2cmake.py", "G:\py\manchester_loop.uvprojx", "G:\py\\"]
     init()
     main()
 
-########################## E. O. F. ###########################################    
+########################## E. O. F. ###########################################
