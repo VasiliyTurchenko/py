@@ -15,6 +15,7 @@ import xml.etree.ElementTree as ET
 
 from colorama import init
 from colorama import Fore, Back, Style
+from string import whitespace
 
 #debug print control
 debug_print_enabled = 1
@@ -193,14 +194,14 @@ def parse_TARGET_OPTIONS(opt_node):
     dig_list = ['TargetArmAds', 'Cads', 'VariousControls', 'Define']
     res, node = dig_in(dig_list, opt_node)
     if res == 1:
-        cdefs = trim_XML_braces(ET.tostring(node)).replace(",", " ").strip()
+        cdefs = trim_XML_braces(ET.tostring(node)).replace(",", " ").strip(whitespace)
         debug_print ("parse_TARGET_OPTIONS() : cdefs = " + cdefs)
         retval['TARGET_C_DEFINES'] = cdefs
 #extract C undefines
     dig_list = ['TargetArmAds', 'Cads', 'VariousControls', 'Undefine']
     res, node = dig_in(dig_list, opt_node)
     if res == 1:
-        cundefs = trim_XML_braces(ET.tostring(node)).replace(",", " ").strip()
+        cundefs = trim_XML_braces(ET.tostring(node)).replace(",", " ").strip(whitespace)
         debug_print ("parse_TARGET_OPTIONS() : cundefs = " + cundefs)
         retval['TARGET_C_UNDEFINES'] = cundefs
         
@@ -208,7 +209,7 @@ def parse_TARGET_OPTIONS(opt_node):
     dig_list = ['TargetArmAds', 'Aads', 'VariousControls', 'Define']
     res, node = dig_in(dig_list, opt_node)
     if res == 1:
-        adefs = trim_XML_braces(ET.tostring(node)).replace(",", " ").strip()
+        adefs = trim_XML_braces(ET.tostring(node)).replace(",", " ").strip(whitespace)
         debug_print ("parse_TARGET_OPTIONS() : adefs = " + adefs)
         retval['TARGET_ASM_DEFINES'] = adefs
 
@@ -216,7 +217,7 @@ def parse_TARGET_OPTIONS(opt_node):
     dig_list = ['TargetArmAds', 'Aads', 'VariousControls', 'Undefine']
     res, node = dig_in(dig_list, opt_node)
     if res == 1:
-        aundefs = trim_XML_braces(ET.tostring(node)).replace(",", " ").strip()
+        aundefs = trim_XML_braces(ET.tostring(node)).replace(",", " ").strip(whitespace)
         debug_print ("parse_TARGET_OPTIONS() : aundefs = " + aundefs)
         retval['TARGET_ASM_UNDEFINES'] = aundefs
         
@@ -224,7 +225,7 @@ def parse_TARGET_OPTIONS(opt_node):
     dig_list = ['TargetArmAds', 'Cads', 'VariousControls', 'IncludePath']
     res, node = dig_in(dig_list, opt_node)
     if res == 1:
-        c_inc = trim_XML_braces(ET.tostring(node)).replace(",", " ").strip()
+        c_inc = trim_XML_braces(ET.tostring(node)).replace(",", " ").strip(whitespace)
         debug_print ("parse_TARGET_OPTIONS() : c_inc = " + c_inc)
         retval['C_INC_DIRS'] = c_inc
 
@@ -232,7 +233,7 @@ def parse_TARGET_OPTIONS(opt_node):
     dig_list = ['TargetArmAds', 'Aads', 'VariousControls', 'IncludePath']
     res, node = dig_in(dig_list, opt_node)
     if res == 1:
-        a_inc = trim_XML_braces(ET.tostring(node)).replace(",", " ").strip()
+        a_inc = trim_XML_braces(ET.tostring(node)).replace(",", " ").strip(whitespace)
         debug_print ("parse_TARGET_OPTIONS() : a_inc = " + a_inc)
         retval['A_INC_DIRS'] = a_inc
 
@@ -374,7 +375,7 @@ def write_defs(ofile, dic):
 def write_incs(ofile, in_string):
     splitted = in_string.split(";")
     for s in splitted:
-        s_out = "target_include_directories(${TARGET_NAME} PUBLIC " + s.replace("\\","/").strip() + ")"
+        s_out = "target_include_directories(${TARGET_NAME} PUBLIC " + s.replace("\\","/").strip(whitespace) + ")"
         writeln(ofile, s_out)
         debug_print(s_out)
     writeln(ofile, "")
