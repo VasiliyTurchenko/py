@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: cp1251 -*-
 
 # keil2cmake.py
 # (c) Vasiliy Turchenko 20
@@ -16,6 +17,9 @@ import xml.etree.ElementTree as ET
 from colorama import init
 from colorama import Fore, Back, Style
 from string import whitespace
+
+# flag that we are on python3
+py3 = 0
 
 #debug print control
 debug_print_enabled = 0
@@ -55,6 +59,25 @@ def trim_XML_braces(text):
     s1 = str(text).split('>')
     s2 = str(s1[1]).split('<')
     return s2[0]
+
+##### XML #####
+def trim_XML_braces2(text):
+
+    text = text.strip()
+    
+    s1 = str(text).split('>')
+
+#    print(">>> s1 ")
+#    print(s1)
+    
+    s2 = str(s1[1]).split('<')
+#    print(">>> s2 ")
+#    print(s2)
+
+    retval = s2[0].replace("'", "")
+#    print(">>> s2[0] ")
+#    print(retval)
+    return retval
 
 #recursive function
 def rec_opt(node):
@@ -127,6 +150,7 @@ def parse_GROUP_node(gnode):
         if s.tag == 'GroupName':
             gname = ET.tostring(s)
             gname = trim_XML_braces(gname)
+            gname = gname.replace(" ", "_")
             gname = gname.replace("/", "_")
             gname = gname.replace("\\", "_")
             gname = gname.replace(":", "_")
@@ -174,6 +198,9 @@ def dig_in(tag_list, node):
 #        debug_print ("dig_in(): not found")
         return 0, node
 
+# patch an XMLtree oddity in python3
+
+
 # parsed target options
 def parse_TARGET_OPTIONS(opt_node):
     retval = {}
@@ -188,14 +215,14 @@ def parse_TARGET_OPTIONS(opt_node):
     dig_list = ['TargetArmAds', 'Cads', 'VariousControls', 'Define']
     res, node = dig_in(dig_list, opt_node)
     if res == 1:
-        cdefs = trim_XML_braces(ET.tostring(node)).replace(",", " ").strip(whitespace)
+        cdefs = trim_XML_braces2(ET.tostring(node)).replace(",", " ").strip(whitespace)
         debug_print ("parse_TARGET_OPTIONS() : cdefs = " + cdefs)
         retval['TARGET_C_DEFINES'] = cdefs
 #extract C undefines
     dig_list = ['TargetArmAds', 'Cads', 'VariousControls', 'Undefine']
     res, node = dig_in(dig_list, opt_node)
     if res == 1:
-        cundefs = trim_XML_braces(ET.tostring(node)).replace(",", " ").strip(whitespace)
+        cundefs = trim_XML_braces2(ET.tostring(node)).replace(",", " ").strip(whitespace)
         debug_print ("parse_TARGET_OPTIONS() : cundefs = " + cundefs)
         retval['TARGET_C_UNDEFINES'] = cundefs
         
@@ -203,7 +230,7 @@ def parse_TARGET_OPTIONS(opt_node):
     dig_list = ['TargetArmAds', 'Aads', 'VariousControls', 'Define']
     res, node = dig_in(dig_list, opt_node)
     if res == 1:
-        adefs = trim_XML_braces(ET.tostring(node)).replace(",", " ").strip(whitespace)
+        adefs = trim_XML_braces2(ET.tostring(node)).replace(",", " ").strip(whitespace)
         debug_print ("parse_TARGET_OPTIONS() : adefs = " + adefs)
         retval['TARGET_ASM_DEFINES'] = adefs
 
@@ -211,7 +238,7 @@ def parse_TARGET_OPTIONS(opt_node):
     dig_list = ['TargetArmAds', 'Aads', 'VariousControls', 'Undefine']
     res, node = dig_in(dig_list, opt_node)
     if res == 1:
-        aundefs = trim_XML_braces(ET.tostring(node)).replace(",", " ").strip(whitespace)
+        aundefs = trim_XML_braces2(ET.tostring(node)).replace(",", " ").strip(whitespace)
         debug_print ("parse_TARGET_OPTIONS() : aundefs = " + aundefs)
         retval['TARGET_ASM_UNDEFINES'] = aundefs
         
@@ -246,6 +273,7 @@ def parse_TARGET(tnode):
         if s.tag == 'TargetName':
             tname = ET.tostring(s)
             tname = trim_XML_braces(tname)
+            tname = tname.replace(" ","_")
         if s.tag == 'TargetOption':
             toptions = parse_TARGET_OPTIONS(s)
         if s.tag == 'Groups':
@@ -320,7 +348,7 @@ def write_lists(ofile, groups):
 
 # writes LIST_OF_SOURCES variable
 def write_LIST_OF_SOURCES(ofile, groups):
-    writeln(ofile, "set\t(LIST_OF_SOURCES")
+    writeln(ofile, "set\t(" + "${" + exec_name + "}" + "_LIST_OF_SOURCES")
     for g in groups:
 
 # does not work!     
@@ -338,10 +366,10 @@ def write_LIST_OF_SOURCES(ofile, groups):
         comm = ""
         if check_IncludeInBuild(g.gopt) != 1:
             comm = "#"
-        writeln(ofile, comm + "\t\tGROUP_SRC_" + g.gname)
+        writeln(ofile, comm + "\t\t${GROUP_SRC_" + g.gname + "}")
     writeln(ofile, "\t)\n")
 
-    writeln(ofile, "target_sources(" + "${" + exec_name + "}" + " PRIVATE ${LIST_OF_SOURCES})\n") 
+    writeln(ofile, "target_sources(" + "${" + exec_name + "}" + " PRIVATE ${${" +  exec_name + "}" + "_LIST_OF_SOURCES} ${STARTUP_CODE_SOURCE})\n") 
 
 
 # 
@@ -361,6 +389,9 @@ def write_defs(ofile, dic):
 # is there any of them?    
     c_undef = dic['TARGET_C_UNDEFINES']
     if len(c_undef) > 0:
+
+        print("len(c_undefs) = " +str(len(c_undef)) + "\n")
+        
         c_undef = " " + c_undef
         c_undef = c_undef.replace(" ", " -U")
         s_out = "target_compile_options(" + "${" + exec_name + "}" + " PRIVATE " + c_undef + ")"
@@ -369,6 +400,9 @@ def write_defs(ofile, dic):
 # asm undefs
     a_undef = dic['TARGET_ASM_UNDEFINES']
     if len(a_undef) > 0:
+
+        print("len(a_undefs) = " +str(len(a_undef)) + "\n")
+        
         a_undef = " " + a_undef
         a_undef = a_undef.replace(" ", " -U")
         s_out = "target_compile_options(" + "${" + exec_name + "}" + " PRIVATE " + a_undef + ")"
@@ -383,15 +417,108 @@ def write_incs(ofile, in_string):
         s_out = "target_include_directories(" + "${" + exec_name + "}" + " PRIVATE " + s.replace("\\","/").strip(whitespace) + ")"
         writeln(ofile, s_out)
         debug_print(s_out)
+    s_out = "target_include_directories(" + "${" + exec_name + "}" + " PRIVATE ./)"
+    writeln(ofile, s_out)
     writeln(ofile, "")
     return
 
 # writes TARGET_NAME variable
 def write_target_name(ofile, tname):
-    s_out = "set(TARGET_NAME " + tname + ")\n"
+    s_out = "\n## ------- TARGET STARTS HERE -------"
+    writeln(ofile, s_out)
+    
+    s_out = "set(TARGET_NAME " + tname + ")"
     writeln(ofile, s_out)
 
+def write_add_exec(ofile, tname, mcu):
+    exec_name_var = tname + "_" + mcu
+
+    s_out = "set(" + exec_name + " " + exec_name_var + ")"
+    writeln(ofile, s_out)
+    
+    s_out = "add_executable(${" + exec_name + "})\n"
+    writeln(ofile, s_out)
+
+def write_compile_options(ofile, opt):
+    s_out = "target_compile_options(${" + exec_name + "}" + " PRIVATE " + "${COMPILE_FLAGS} " + str(opt) + ")"
+    writeln(ofile, s_out)
+
+def write_link_options(ofile, opt):
+    s_out = "\ntarget_link_options(\n\t\t\t\t${" + exec_name + "}" + " BEFORE PRIVATE \n" +\
+                                    "\t\t\t\t\"-Wl,-Map=${BOARD}.map\"\n" +\
+                                    "\t\t\t\t\"-Wl,-T${LDSCRIPT}\"\n" + \
+				    "\t\t\t\t\"-Wl,--gc-sections\"\n" + \
+				    "\t\t\t\t\"-Wl,--verbose\"\n" + \
+				    "\t\t\t\t\"-Wl,-V\"\n" + \
+                                    "\t\t\t\t\"-Wl,--cref\"\n" +\
+                                    "\t\t\t\t${COMPILE_FLAGS})\n"
+    writeln(ofile, s_out)
+
+def write_link_lib(ofile, opt):
+    s_out = "\ntarget_link_libraries(\n\t\t\t\t${" + exec_name + "}\n" + \
+				    "\t\t\t\tc		# c runtime\n" + \
+				    "\t\t\t\tm		# math\n" + \
+				    "\t\t\t\tnosys	# for non-os\n" + \
+                                    "\t\t\t\t)\n"
+    writeln(ofile, s_out)
+
+def add_custom_targets(ofile):
+    s_out = "STM32_ADD_HEX_BIN_TARGETS(${" + exec_name + "})"
+    writeln(ofile, s_out)
+    s_out = "STM32_PRINT_SIZE_OF_TARGETS(${" + exec_name + "})"
+    writeln(ofile, s_out)    
+
+def detect_mcu(in_mcu):
+    mcu_dep = namedtuple('MCU_OPT', 'mcu_family mcu_comp_opt')
+    mcu_dep1 = mcu_dep("STM32F1", "-mcpu=cortex-m3 -mthumb -mfloat-abi=soft  -mno-thumb-interwork -v")
+    mcu_dep3 = mcu_dep("STM32F3", "-mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16  -mno-thumb-interwork -v")
+    mcu_dep4 = mcu_dep("STM32F4", "-mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16  -mno-thumb-interwork -v")
+
+    mcus = (mcu_dep1, mcu_dep3, mcu_dep4)
+    retval = ""
+
+    for mcu in mcus:
+        if in_mcu.startswith(mcu.mcu_family):
+            retval = mcu.mcu_comp_opt
+    return retval
+
+def write_comp_flags(ofile, t):
+    s_out = "set(COMPILE_FLAGS " + t + ")"
+    writeln(ofile, s_out)    
+
+def detect_asm_src_and_ld(in_mcu):
+    startup_code = namedtuple('ASM_SRC', 'mcu asm_file ld')
+
+    startup1 = startup_code("STM32F405RGTx", "startup_stm32f405xx.s", "STM32F405RGTx_FLASH.ld")
+    startup2 = startup_code("STM32F103CB", "startup_stm32f103xb.s", "STM32F103C8Tx_FLASH.ld")
+    startup3 = startup_code("STM32F303CB", "startup_stm32f303xc.s", "STM32F303CCTx_FLASH.ld")
+
+    startups = (startup1, startup2, startup3)
+
+    retval = "add_your_asm_file","add_your_ld_script"
+
+    for startup in startups:
+        if in_mcu == startup.mcu:
+            retval = startup.asm_file, startup.ld
+    return retval
+
+def write_startup_code_source(ofile, in_mcu):
+    asm, ld = detect_asm_src_and_ld(in_mcu)
+    s_out = "set(STARTUP_CODE_SOURCE ${STARTUP_CODE_DIR}/%asmfile%)"
+    s_out = s_out.replace("%asmfile%", asm)
+    writeln(ofile, s_out)
+
+    s_out = "set(LDSCRIPT ${STARTUP_CODE_DIR}/%ldfile%)"
+    s_out = s_out.replace("%ldfile%", ld)
+    writeln(ofile, s_out)
+   
+    
 def main():
+
+# check python version
+    if sys.version_info[0] == 3:
+        py3 = 1
+        print("python 3 detected!\n")
 # check arguments
     if len(sys.argv) < 3:
         usage()
@@ -413,12 +540,14 @@ def main():
         exit(-3)
 
     cmake_dir_n = sys.argv[2]
-    debug_print(cmake_dir_n)
+    debug_print("cmake_dir_n = " + cmake_dir_n)
+
     cmake_dir = Path(cmake_dir_n)
     if check_dir_exists(cmake_dir) == 0:
         print("Error! Can't find target directory " + str(cmake_dir))
         exit(-4)
 
+    debug_print("cmake_dir_n = " + str(cmake_dir))
     tree = ET.parse(str(keil_proj_file))
     root = tree.getroot()
     for child in root:
@@ -427,26 +556,42 @@ def main():
                 if child2.tag == 'Target':
                     a = parse_TARGET(child2)
 # generate cmake list for the target
-                    ofile = check_outfile(a.tname + "_" + out_file_name)
+                    ofile = check_outfile(cmake_dir_n + "\\" + a.tname + "_" + out_file_name)
 # open and reset output file
                     text_file = open(str(ofile), "w+")
 # write target name
                     write_target_name(text_file, a.tname)
+# add_executable
+                    write_add_exec(text_file, a.tname, a.toptions['MCU'])
 # write defines for the target, and undefines
                     write_defs(text_file, a.toptions)
 # wrile include directories
                     write_incs(text_file, a.toptions['C_INC_DIRS'])
                     write_incs(text_file, a.toptions['A_INC_DIRS'])
+                    
+# try to detect MCU family
+                    comp_flags = detect_mcu(a.toptions['MCU'])
+                    write_comp_flags(text_file, comp_flags)
+
+                    write_startup_code_source(text_file, a.toptions['MCU'])
+                    
 # write cmake lists of sources to the outfile
                     write_lists(text_file, a.tgroups)
                     write_LIST_OF_SOURCES(text_file, a.tgroups)
+
+                    write_compile_options(text_file, "")
+
+                    
+                    write_link_options(text_file, "")
+                    write_link_lib(text_file, "")
+                    add_custom_targets(text_file)
                     text_file.close()
                     print(Fore.GREEN + Style.BRIGHT + "Success!" + Style.RESET_ALL + " File " + Style.BRIGHT + str(ofile) + Style.RESET_ALL + " created.")
 
 
 ###############################################################################
 if __name__ == "__main__":
-    sys.argv = ["keil2cmake.py", "G:\py\c1.uvprojx", "G:\py\\"]
+    sys.argv = ["keil2cmake.py", "D:\\playground\\bbm\\bbm.uvprojx", "D:\\playground\\bbm"]
     init()
     main()
 
