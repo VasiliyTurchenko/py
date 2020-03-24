@@ -591,7 +591,7 @@ def main():
 
 ###############################################################################
 if __name__ == "__main__":
-    sys.argv = ["keil2cmake.py", "D:\\playground\\bbm\\bbm.uvprojx", "D:\\playground\\bbm"]
+#    sys.argv = ["keil2cmake.py", "D:\\playground\\bbm\\bbm.uvprojx", "D:\\playground\\bbm"]
     init()
     main()
 
