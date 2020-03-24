@@ -390,7 +390,7 @@ def write_defs(ofile, dic):
     c_undef = dic['TARGET_C_UNDEFINES']
     if len(c_undef) > 0:
 
-        print("len(c_undefs) = " +str(len(c_undef)) + "\n")
+        #print("len(c_undefs) = " +str(len(c_undef)) + "\n")
         
         c_undef = " " + c_undef
         c_undef = c_undef.replace(" ", " -U")
@@ -401,7 +401,7 @@ def write_defs(ofile, dic):
     a_undef = dic['TARGET_ASM_UNDEFINES']
     if len(a_undef) > 0:
 
-        print("len(a_undefs) = " +str(len(a_undef)) + "\n")
+        #print("len(a_undefs) = " +str(len(a_undef)) + "\n")
         
         a_undef = " " + a_undef
         a_undef = a_undef.replace(" ", " -U")
@@ -445,7 +445,7 @@ def write_compile_options(ofile, opt):
 
 def write_link_options(ofile, opt):
     s_out = "\ntarget_link_options(\n\t\t\t\t${" + exec_name + "}" + " BEFORE PRIVATE \n" +\
-                                    "\t\t\t\t\"-Wl,-Map=${BOARD}.map\"\n" +\
+                                    "\t\t\t\t\"-Wl,-Map=${" + exec_name + "}.map\"\n" +\
                                     "\t\t\t\t\"-Wl,-T${LDSCRIPT}\"\n" + \
 				    "\t\t\t\t\"-Wl,--gc-sections\"\n" + \
 				    "\t\t\t\t\"-Wl,--verbose\"\n" + \
