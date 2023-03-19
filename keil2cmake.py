@@ -2,9 +2,10 @@
 # -*- coding: cp1251 -*-
 
 # keil2cmake.py
-# (c) Vasiliy Turchenko 20
+# (c) Vasiliy Turchenko 19-Mar-2023
 
 import sys
+from sys import exit
 import os
 import re
 #import strings
@@ -21,18 +22,23 @@ from string import whitespace
 # flag that we are on python3
 py3 = 0
 
-#debug print control
+# debug print control
 debug_print_enabled = 0
 #
 out_file_name = "sources_list.cmake"
 exec_name = "EXEC_NAME"
+cmake_dir = os.curdir
 
 # debug print
+
+
 def debug_print(text):
     if debug_print_enabled == 1:
         print(text)
 
 # print usage
+
+
 def usage():
     print("Usage " + sys.argv[0] + " <Keil_proj_file> " + " <target_path> \n")
     print("Keil_proj_file - Keil project *.uvprojx file")
@@ -41,6 +47,8 @@ def usage():
 # checks if file exists
 # return 0 if no file exists
 # return 1 if file exists
+
+
 def check_file_exists(f):
     if f.is_file():
         return 1
@@ -49,27 +57,33 @@ def check_file_exists(f):
 # checks if directory exists
 # return 0 if no dir exists
 # return 1 if dir exists
+
+
 def check_dir_exists(d):
     if d.is_dir():
         return 1
     return 0
 
 ##### XML #####
+
+
 def trim_XML_braces(text):
     s1 = str(text).split('>')
     s2 = str(s1[1]).split('<')
     return s2[0]
 
 ##### XML #####
+
+
 def trim_XML_braces2(text):
 
     text = text.strip()
-    
+
     s1 = str(text).split('>')
 
 #    print(">>> s1 ")
 #    print(s1)
-    
+
     s2 = str(s1[1]).split('<')
 #    print(">>> s2 ")
 #    print(s2)
@@ -79,7 +93,9 @@ def trim_XML_braces2(text):
 #    print(retval)
     return retval
 
-#recursive function
+# recursive function
+
+
 def rec_opt(node):
     retval = {}
     try:
@@ -99,6 +115,8 @@ def rec_opt(node):
     return retval
 
 # file/group option detect
+
+
 def proc_opt(node, opt_name):
     retval = rec_opt(node)
 #    print(retval)
@@ -115,6 +133,8 @@ def proc_opt(node, opt_name):
 # 8 - image file
 
 # parses file entry
+
+
 def parse_FILE_node(fnode):
     File_entry = namedtuple('File_entry', 'fname ftype fpath fopt')
     fname = ""
@@ -133,18 +153,20 @@ def parse_FILE_node(fnode):
             fpath = trim_XML_braces(fpath)
             fpath = fpath.replace("\\", "/")
         if s.tag == 'FileOption':
-#            debug_print("file option detected")
+            #            debug_print("file option detected")
             fopt = proc_opt(s, "FileOption")
     retval = File_entry(fname, ftype, fpath, fopt)
 #    debug_print(retval)
     return retval
 
 # parses group of source files
+
+
 def parse_GROUP_node(gnode):
     Group = namedtuple('Group', 'gname files gopt')
     gname = ""
     gopt = {}
-#set of filenames, filetypes, filepaths
+# set of filenames, filetypes, filepaths
     fileset = list()
     for s in gnode:
         if s.tag == 'GroupName':
@@ -161,7 +183,7 @@ def parse_GROUP_node(gnode):
                 if ss.tag == 'File':
                     fileset.append(parse_FILE_node(ss))
         if s.tag == 'GroupOption':
-#            debug_print("group option detected")
+            #            debug_print("group option detected")
             gopt = proc_opt(s, "GroupOption")
         retval = Group(gname, fileset, gopt)
 #    debug_print(retval)
@@ -181,7 +203,7 @@ def dig_in(tag_list, node):
         found = 0
 #       debug_print("i = " + str(i))
         for a in curr_node:
-#            debug_print (type(node))
+            #            debug_print (type(node))
             if a.tag == tag_list[i]:
                 i = i + 1
                 curr_node = a
@@ -189,13 +211,13 @@ def dig_in(tag_list, node):
 #               debug_print (a.tag + " <> " + tag_list[i - 1] + " i = " + str(i))
                 break
         if found == 0:
-        # tags did not match
+            # tags did not match
             break
-    if (i == L ) and (found == 1):
-#        debug_print ("dig_in(): found: " + ET.tostring(curr_node))
+    if (i == L) and (found == 1):
+        #        debug_print ("dig_in(): found: " + ET.tostring(curr_node))
         return 1, curr_node
     else:
-#        debug_print ("dig_in(): not found")
+        #        debug_print ("dig_in(): not found")
         return 0, node
 
 # patch an XMLtree oddity in python3
@@ -211,60 +233,68 @@ def parse_TARGET_OPTIONS(opt_node):
     print(mcu)
     retval['MCU'] = mcu
 
-#extract C defines 
+# extract C defines
     dig_list = ['TargetArmAds', 'Cads', 'VariousControls', 'Define']
     res, node = dig_in(dig_list, opt_node)
     if res == 1:
-        cdefs = trim_XML_braces2(ET.tostring(node)).replace(",", " ").strip(whitespace)
-        debug_print ("parse_TARGET_OPTIONS() : cdefs = " + cdefs)
+        cdefs = trim_XML_braces2(ET.tostring(node)).replace(
+            ",", " ").strip(whitespace)
+        debug_print("parse_TARGET_OPTIONS() : cdefs = " + cdefs)
         retval['TARGET_C_DEFINES'] = cdefs
-#extract C undefines
+# extract C undefines
     dig_list = ['TargetArmAds', 'Cads', 'VariousControls', 'Undefine']
     res, node = dig_in(dig_list, opt_node)
     if res == 1:
-        cundefs = trim_XML_braces2(ET.tostring(node)).replace(",", " ").strip(whitespace)
-        debug_print ("parse_TARGET_OPTIONS() : cundefs = " + cundefs)
+        cundefs = trim_XML_braces2(ET.tostring(node)).replace(
+            ",", " ").strip(whitespace)
+        debug_print("parse_TARGET_OPTIONS() : cundefs = " + cundefs)
         retval['TARGET_C_UNDEFINES'] = cundefs
-        
-#extract ASM defines         
+
+# extract ASM defines
     dig_list = ['TargetArmAds', 'Aads', 'VariousControls', 'Define']
     res, node = dig_in(dig_list, opt_node)
     if res == 1:
-        adefs = trim_XML_braces2(ET.tostring(node)).replace(",", " ").strip(whitespace)
-        debug_print ("parse_TARGET_OPTIONS() : adefs = " + adefs)
+        adefs = trim_XML_braces2(ET.tostring(node)).replace(
+            ",", " ").strip(whitespace)
+        debug_print("parse_TARGET_OPTIONS() : adefs = " + adefs)
         retval['TARGET_ASM_DEFINES'] = adefs
 
-#extract ASM undefines         
+# extract ASM undefines
     dig_list = ['TargetArmAds', 'Aads', 'VariousControls', 'Undefine']
     res, node = dig_in(dig_list, opt_node)
     if res == 1:
-        aundefs = trim_XML_braces2(ET.tostring(node)).replace(",", " ").strip(whitespace)
-        debug_print ("parse_TARGET_OPTIONS() : aundefs = " + aundefs)
+        aundefs = trim_XML_braces2(ET.tostring(node)).replace(
+            ",", " ").strip(whitespace)
+        debug_print("parse_TARGET_OPTIONS() : aundefs = " + aundefs)
         retval['TARGET_ASM_UNDEFINES'] = aundefs
-        
-#extract C include dirs
+
+# extract C include dirs
     dig_list = ['TargetArmAds', 'Cads', 'VariousControls', 'IncludePath']
     res, node = dig_in(dig_list, opt_node)
     if res == 1:
-        c_inc = trim_XML_braces(ET.tostring(node)).replace(",", " ").strip(whitespace)
-        debug_print ("parse_TARGET_OPTIONS() : c_inc = " + c_inc)
+        c_inc = trim_XML_braces(ET.tostring(node)).replace(
+            ",", " ").strip(whitespace)
+        debug_print("parse_TARGET_OPTIONS() : c_inc = " + c_inc)
         retval['C_INC_DIRS'] = c_inc
 
-#extract ASM include dirs
+# extract ASM include dirs
     dig_list = ['TargetArmAds', 'Aads', 'VariousControls', 'IncludePath']
     res, node = dig_in(dig_list, opt_node)
     if res == 1:
-        a_inc = trim_XML_braces(ET.tostring(node)).replace(",", " ").strip(whitespace)
-        debug_print ("parse_TARGET_OPTIONS() : a_inc = " + a_inc)
+        a_inc = trim_XML_braces(ET.tostring(node)).replace(
+            ",", " ").strip(whitespace)
+        debug_print("parse_TARGET_OPTIONS() : a_inc = " + a_inc)
         retval['A_INC_DIRS'] = a_inc
 
     return retval
 
 # parses target
+
+
 def parse_TARGET(tnode):
-#                                  target name
-#                                        groups of files in the target
-#                                               options for the target
+    #                                  target name
+    #                                        groups of files in the target
+    #                                               options for the target
     Target = namedtuple('Target', 'tname tgroups toptions')
     tname = ""
     toptions = {}
@@ -273,7 +303,7 @@ def parse_TARGET(tnode):
         if s.tag == 'TargetName':
             tname = ET.tostring(s)
             tname = trim_XML_braces(tname)
-            tname = tname.replace(" ","_")
+            tname = tname.replace(" ", "_")
         if s.tag == 'TargetOption':
             toptions = parse_TARGET_OPTIONS(s)
         if s.tag == 'Groups':
@@ -286,15 +316,19 @@ def parse_TARGET(tnode):
     return retval
 
 # checks IncludeInBuild key in properties
+
+
 def check_IncludeInBuild(prop):
     inc_key = prop.get('IncludeInBuild')
     retval = 1
-    if  inc_key:
+    if inc_key:
         if inc_key != '1':
             retval = 0
     return retval
 
 # get custom text key in properties
+
+
 def get_custom_text(prop, key):
     text = prop.get(key)
     retval = ""
@@ -308,34 +342,41 @@ def get_custom_text(prop, key):
 def check_outfile(n):
     output_file = Path(n)
     if output_file.is_file():
-        print(Fore.YELLOW + Style.BRIGHT + "\nWarning! " + Style.RESET_ALL + "The file " + Style.BRIGHT + n + Style.RESET_ALL + " already exists! Overwrite the existing file (y/n)?")
+        print(Fore.YELLOW + Style.BRIGHT + "\nWarning! " + Style.RESET_ALL + "The file " +
+              Style.BRIGHT + n + Style.RESET_ALL + " already exists! Overwrite the existing file (y/n)?")
         if not sys.stdin.readline() == "y\n":
             print("Exiting witout any changes made.")
             exit(-5)
     return output_file
 
+
 def writeln(f, t):
     f.write(t + "\n")
 
 # write cmake lists of sources to the outfile
+
+
 def write_lists(ofile, groups):
     for g in groups:
         writeln(ofile, "set\t(GROUP_SRC_" + g.gname)
         for f in g.files:
-# does this file have custom includes?
+            # does this file have custom includes?
             ip = get_custom_text(f.fopt, 'IncludePath')
             if ip != "":
-                print(Fore.YELLOW + Style.BRIGHT + "\nWarning! " + Style.RESET_ALL + "The file " + Style.BRIGHT + f.fpath + Style.RESET_ALL + " has custom include path!")
+                print(Fore.YELLOW + Style.BRIGHT + "\nWarning! " + Style.RESET_ALL + "The file " +
+                      Style.BRIGHT + f.fpath + Style.RESET_ALL + " has custom include path!")
                 writeln(ofile, "\n# >>>> custom include!\t\t" + ip)
 
             define = get_custom_text(f.fopt, 'Define')
             if define != "":
-                print(Fore.YELLOW + Style.BRIGHT + "\nWarning! " + Style.RESET_ALL + "The file " + Style.BRIGHT + f.fpath + Style.RESET_ALL + " has custom defines!")
+                print(Fore.YELLOW + Style.BRIGHT + "\nWarning! " + Style.RESET_ALL +
+                      "The file " + Style.BRIGHT + f.fpath + Style.RESET_ALL + " has custom defines!")
                 writeln(ofile, "\n# >>>> custom defines!\t\t" + define)
 
             undefine = get_custom_text(f.fopt, 'Undefine')
             if undefine != "":
-                print(Fore.YELLOW + Style.BRIGHT + "\nWarning! " + Style.RESET_ALL + "The file " + Style.BRIGHT + f.fpath + Style.RESET_ALL + " has custom undefines!")
+                print(Fore.YELLOW + Style.BRIGHT + "\nWarning! " + Style.RESET_ALL + "The file " +
+                      Style.BRIGHT + f.fpath + Style.RESET_ALL + " has custom undefines!")
                 writeln(ofile, "\n# >>>> custom undefines!\t\t" + undefine)
 
             comm = ""
@@ -343,58 +384,73 @@ def write_lists(ofile, groups):
                 comm = "#"
             if check_IncludeInBuild(f.fopt) != 1:
                 comm = "#"
-            writeln(ofile, comm + "\t\t" + f.fpath)
+            beau = os.path.normpath(f.fpath)
+            beau = beau.replace("\\", "/")
+            if beau.startswith("../"):
+                beau = beau[3:]
+            writeln(ofile, comm + "\t\t" + beau)
         writeln(ofile, "\t)\n")
 
 # writes LIST_OF_SOURCES variable
+
+
 def write_LIST_OF_SOURCES(ofile, groups):
     writeln(ofile, "set\t(" + "${" + exec_name + "}" + "_LIST_OF_SOURCES")
     for g in groups:
 
-# does not work!     
+        # does not work!
         define = get_custom_text(g.gopt, 'Define')
         if define != "":
-            print(Fore.YELLOW + Style.BRIGHT + "\nWarning! " + Style.RESET_ALL + "The group " + Style.BRIGHT + g.gname + Style.RESET_ALL + " has custom defines!")
+            print(Fore.YELLOW + Style.BRIGHT + "\nWarning! " + Style.RESET_ALL +
+                  "The group " + Style.BRIGHT + g.gname + Style.RESET_ALL + " has custom defines!")
             writeln(ofile, "\n# >>>> custom defines!\t\t" + define)
 
         undefine = get_custom_text(g.gopt, 'Undefine')
         if undefine != "":
-            print(Fore.YELLOW + Style.BRIGHT + "\nWarning! " + Style.RESET_ALL + "The group " + Style.BRIGHT + g.gname + Style.RESET_ALL + " has custom undefines!")
+            print(Fore.YELLOW + Style.BRIGHT + "\nWarning! " + Style.RESET_ALL + "The group " +
+                  Style.BRIGHT + g.gname + Style.RESET_ALL + " has custom undefines!")
             writeln(ofile, "\n# >>>> custom undefines!\t\t" + undefine)
-#^^^^^^^^^^^^^^^
-    
+# ^^^^^^^^^^^^^^^
+
         comm = ""
         if check_IncludeInBuild(g.gopt) != 1:
             comm = "#"
         writeln(ofile, comm + "\t\t${GROUP_SRC_" + g.gname + "}")
     writeln(ofile, "\t)\n")
 
-    writeln(ofile, "target_sources(" + "${" + exec_name + "}" + " PRIVATE ${${" +  exec_name + "}" + "_LIST_OF_SOURCES} ${STARTUP_CODE_SOURCE})\n") 
+    writeln(ofile, "target_sources(" + "${" + exec_name + "}" +
+            " PRIVATE ${${" + exec_name + "}" + "_LIST_OF_SOURCES} ${STARTUP_CODE_SOURCE})\n")
 
 
-# 
+#
 def write_defs(ofile, dic):
-    s_out = "set(MCU "+ dic['MCU'] +")"
+    s_out = "set(MCU " + dic['MCU'] + ")"
     writeln(ofile, s_out)
 #    debug_print(s_out)
 # c defs
-    s_out = "target_compile_definitions(" + "${" + exec_name + "}" + " PRIVATE " + dic['TARGET_C_DEFINES'] + ")"
+    s_out = "target_compile_definitions(" + "${" + exec_name + "}" + \
+        " PRIVATE " + dic['TARGET_C_DEFINES'] + ")"
     writeln(ofile, s_out)
 
 # asm defs
-    s_out = "target_compile_definitions(" + "${" + exec_name + "}" + " PRIVATE " + dic['TARGET_ASM_DEFINES'] + ")"
-    writeln(ofile, s_out)
+    if len(dic['TARGET_ASM_DEFINES']) > 0:
+        s_out = "target_compile_definitions(" + "${" + exec_name + "}" + \
+            " PRIVATE " + dic['TARGET_ASM_DEFINES'] + ")"
+        writeln(ofile, s_out)
+    else:
+        writeln(ofile, "\n")
 
 # c undefs
-# is there any of them?    
+# is there any of them?
     c_undef = dic['TARGET_C_UNDEFINES']
     if len(c_undef) > 0:
 
         #print("len(c_undefs) = " +str(len(c_undef)) + "\n")
-        
+
         c_undef = " " + c_undef
         c_undef = c_undef.replace(" ", " -U")
-        s_out = "target_compile_options(" + "${" + exec_name + "}" + " PRIVATE " + c_undef + ")"
+        s_out = "target_compile_options(" + \
+            "${" + exec_name + "}" + " PRIVATE " + c_undef + ")"
         writeln(ofile, s_out)
 
 # asm undefs
@@ -402,77 +458,103 @@ def write_defs(ofile, dic):
     if len(a_undef) > 0:
 
         #print("len(a_undefs) = " +str(len(a_undef)) + "\n")
-        
+
         a_undef = " " + a_undef
         a_undef = a_undef.replace(" ", " -U")
-        s_out = "target_compile_options(" + "${" + exec_name + "}" + " PRIVATE " + a_undef + ")"
+        s_out = "target_compile_options(" + \
+            "${" + exec_name + "}" + " PRIVATE " + a_undef + ")"
         writeln(ofile, s_out)
-    
+
     return
 
 # writes target include directories
+
+
 def write_incs(ofile, in_string):
     splitted = in_string.split(";")
     for s in splitted:
-        s_out = "target_include_directories(" + "${" + exec_name + "}" + " PRIVATE " + s.replace("\\","/").strip(whitespace) + ")"
-        writeln(ofile, s_out)
-        debug_print(s_out)
-    s_out = "target_include_directories(" + "${" + exec_name + "}" + " PRIVATE ./)"
+        s1 = s.strip(whitespace)
+        s2 = os.path.normpath(s1)
+        s2 = s1.replace("\\\\", "/")
+        if s2.startswith("../"):
+            s2 = s2[3:]
+        if not s2.startswith("\\n "):
+            s_out = "target_include_directories(" + "${" + exec_name + "}" + \
+                " PRIVATE " + s2 + ")"
+            writeln(ofile, s_out)
+            debug_print(s_out)
+    s_out = "target_include_directories(" + \
+        "${" + exec_name + "}" + " PRIVATE .)"
     writeln(ofile, s_out)
     writeln(ofile, "")
     return
 
 # writes TARGET_NAME variable
+
+
 def write_target_name(ofile, tname):
     s_out = "\n## ------- TARGET STARTS HERE -------"
     writeln(ofile, s_out)
-    
+
     s_out = "set(TARGET_NAME " + tname + ")"
     writeln(ofile, s_out)
+    
+
 
 def write_add_exec(ofile, tname, mcu):
     exec_name_var = tname + "_" + mcu
 
     s_out = "set(" + exec_name + " " + exec_name_var + ")"
     writeln(ofile, s_out)
-    
+    s_out = "set(TARGET_NAME ${EXEC_NAME} )"
+    writeln(ofile, s_out)
+
     s_out = "add_executable(${" + exec_name + "})\n"
     writeln(ofile, s_out)
 
+
 def write_compile_options(ofile, opt):
-    s_out = "target_compile_options(${" + exec_name + "}" + " PRIVATE " + "${COMPILE_FLAGS} " + str(opt) + ")"
+    s_out = "target_compile_options(${" + exec_name + "}" + \
+        " PRIVATE " + "${COMPILE_FLAGS} " + str(opt) + ")"
     writeln(ofile, s_out)
+
 
 def write_link_options(ofile, opt):
     s_out = "\ntarget_link_options(\n\t\t\t\t${" + exec_name + "}" + " BEFORE PRIVATE \n" +\
-                                    "\t\t\t\t\"-Wl,-Map=${" + exec_name + "}.map\"\n" +\
-                                    "\t\t\t\t\"-Wl,-T${LDSCRIPT}\"\n" + \
-				    "\t\t\t\t\"-Wl,--gc-sections\"\n" + \
-				    "\t\t\t\t\"-Wl,--verbose\"\n" + \
-				    "\t\t\t\t\"-Wl,-V\"\n" + \
-                                    "\t\t\t\t\"-Wl,--cref\"\n" +\
-                                    "\t\t\t\t${COMPILE_FLAGS})\n"
+        "\t\t\t\t\"-Wl,-Map=${" + exec_name + "}.map\"\n" +\
+        "\t\t\t\t\"-Wl,-T${LDSCRIPT}\"\n" + \
+        "\t\t\t\t\"-Wl,--gc-sections\"\n" + \
+        "\t\t\t\t\"-Wl,--verbose\"\n" + \
+        "\t\t\t\t\"-Wl,-V\"\n" + \
+        "\t\t\t\t\"-Wl,--cref\"\n" +\
+        "\t\t\t\t${COMPILE_FLAGS})\n"
     writeln(ofile, s_out)
+
 
 def write_link_lib(ofile, opt):
     s_out = "\ntarget_link_libraries(\n\t\t\t\t${" + exec_name + "}\n" + \
-				    "\t\t\t\tc		# c runtime\n" + \
-				    "\t\t\t\tm		# math\n" + \
-				    "\t\t\t\tnosys	# for non-os\n" + \
-                                    "\t\t\t\t)\n"
+        "\t\t\t\tc		# c runtime\n" + \
+        "\t\t\t\tm		# math\n" + \
+        "\t\t\t\tnosys	# for non-os\n" + \
+        "\t\t\t\t)\n"
     writeln(ofile, s_out)
+
 
 def add_custom_targets(ofile):
     s_out = "STM32_ADD_HEX_BIN_TARGETS(${" + exec_name + "})"
     writeln(ofile, s_out)
     s_out = "STM32_PRINT_SIZE_OF_TARGETS(${" + exec_name + "})"
-    writeln(ofile, s_out)    
+    writeln(ofile, s_out)
+
 
 def detect_mcu(in_mcu):
     mcu_dep = namedtuple('MCU_OPT', 'mcu_family mcu_comp_opt')
-    mcu_dep1 = mcu_dep("STM32F1", "-mcpu=cortex-m3 -mthumb -mfloat-abi=soft  -mno-thumb-interwork -v")
-    mcu_dep3 = mcu_dep("STM32F3", "-mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16  -mno-thumb-interwork -v")
-    mcu_dep4 = mcu_dep("STM32F4", "-mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16  -mno-thumb-interwork -v")
+    mcu_dep1 = mcu_dep(
+        "STM32F1", "-mcpu=cortex-m3 -mthumb -mfloat-abi=soft  -mno-thumb-interwork -v")
+    mcu_dep3 = mcu_dep(
+        "STM32F3", "-mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16  -mno-thumb-interwork -v")
+    mcu_dep4 = mcu_dep(
+        "STM32F4", "-mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16  -mno-thumb-interwork -v")
 
     mcus = (mcu_dep1, mcu_dep3, mcu_dep4)
     retval = ""
@@ -482,27 +564,45 @@ def detect_mcu(in_mcu):
             retval = mcu.mcu_comp_opt
     return retval
 
+
 def write_comp_flags(ofile, t):
     s_out = "set(COMPILE_FLAGS " + t + ")"
-    writeln(ofile, s_out)    
+    writeln(ofile, s_out)
+
 
 def detect_asm_src_and_ld(in_mcu):
     startup_code = namedtuple('ASM_SRC', 'mcu asm_file ld')
 
-    startup1 = startup_code("STM32F405RGTx", "startup_stm32f405xx.s", "STM32F405RGTx_FLASH.ld")
-    startup2 = startup_code("STM32F103CB", "startup_stm32f103xb.s", "STM32F103C8Tx_FLASH.ld")
-    startup3 = startup_code("STM32F303CB", "startup_stm32f303xc.s", "STM32F303CCTx_FLASH.ld")
+    startup1 = startup_code(
+        "STM32F405RGTx", "startup_stm32f405xx.s", "STM32F405RGTx_FLASH.ld")
+    startup2 = startup_code(
+        "STM32F103CB", "startup_stm32f103xb.s", "STM32F103C8Tx_FLASH.ld")
+    startup3 = startup_code(
+        "STM32F303CB", "startup_stm32f303xc.s", "STM32F303CCTx_FLASH.ld")
 
     startups = (startup1, startup2, startup3)
 
-    retval = "add_your_asm_file","add_your_ld_script"
+    retval = "add_your_asm_file", "add_your_ld_script"
 
     for startup in startups:
         if in_mcu == startup.mcu:
             retval = startup.asm_file, startup.ld
     return retval
 
+
 def write_startup_code_source(ofile, in_mcu):
+    s_out = """
+# The path to the asm startup file(s)
+set(STARTUP_CODE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+
+# A debug output
+message("STARTUP_CODE_DIR = " ${STARTUP_CODE_DIR})
+
+# The path to the linker script(s)
+set(LINKER_SCRIPTS_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+message("LINKER_SCRIPTS_DIR = " ${LINKER_SCRIPTS_DIR})
+"""
+    writeln(ofile, s_out)
     asm, ld = detect_asm_src_and_ld(in_mcu)
     s_out = "set(STARTUP_CODE_SOURCE ${STARTUP_CODE_DIR}/%asmfile%)"
     s_out = s_out.replace("%asmfile%", asm)
@@ -511,11 +611,11 @@ def write_startup_code_source(ofile, in_mcu):
     s_out = "set(LDSCRIPT ${STARTUP_CODE_DIR}/%ldfile%)"
     s_out = s_out.replace("%ldfile%", ld)
     writeln(ofile, s_out)
-   
-    
+
+
 def main():
 
-# check python version
+    # check python version
     if sys.version_info[0] == 3:
         py3 = 1
         print("python 3 detected!\n")
@@ -529,10 +629,11 @@ def main():
     keil_proj_file = Path(keil_proj_file_n)
 
     if check_file_exists(keil_proj_file) == 0:
-        print(Fore.RED + Style.BRIGHT + "Error!" + Style.RESET_ALL + " Can't find Keil project file " + Style.BRIGHT + str(keil_proj_file) + Style.RESET_ALL)
+        print(Fore.RED + Style.BRIGHT + "Error!" + Style.RESET_ALL +
+              " Can't find Keil project file " + Style.BRIGHT + str(keil_proj_file) + Style.RESET_ALL)
         exit(-2)
 
-#check is file .uvprojx or not
+# check is file .uvprojx or not
     spl = os.path.splitext(str(keil_proj_file))
     debug_print(spl)
     if spl[1] != ".uvprojx":
@@ -556,7 +657,10 @@ def main():
                 if child2.tag == 'Target':
                     a = parse_TARGET(child2)
 # generate cmake list for the target
-                    ofile = check_outfile(cmake_dir_n + "\\" + a.tname + "_" + out_file_name)
+                    ofile_raw = cmake_dir.joinpath(a.tname + "_" + out_file_name)
+#                    cmake_dir_n + "\\" + a.tname + "_" + out_file_name
+                    ofile_raw = os.path.realpath(ofile_raw)
+                    ofile = check_outfile(ofile_raw)
 # open and reset output file
                     text_file = open(str(ofile), "w+")
 # write target name
@@ -568,30 +672,30 @@ def main():
 # wrile include directories
                     write_incs(text_file, a.toptions['C_INC_DIRS'])
                     write_incs(text_file, a.toptions['A_INC_DIRS'])
-                    
+
 # try to detect MCU family
                     comp_flags = detect_mcu(a.toptions['MCU'])
                     write_comp_flags(text_file, comp_flags)
 
                     write_startup_code_source(text_file, a.toptions['MCU'])
-                    
+
 # write cmake lists of sources to the outfile
                     write_lists(text_file, a.tgroups)
                     write_LIST_OF_SOURCES(text_file, a.tgroups)
 
                     write_compile_options(text_file, "")
 
-                    
                     write_link_options(text_file, "")
                     write_link_lib(text_file, "")
                     add_custom_targets(text_file)
                     text_file.close()
-                    print(Fore.GREEN + Style.BRIGHT + "Success!" + Style.RESET_ALL + " File " + Style.BRIGHT + str(ofile) + Style.RESET_ALL + " created.")
+                    print(Fore.GREEN + Style.BRIGHT + "Success!" + Style.RESET_ALL +
+                          " File " + Style.BRIGHT + str(ofile) + Style.RESET_ALL + " created.")
 
 
 ###############################################################################
 if __name__ == "__main__":
-#    sys.argv = ["keil2cmake.py", "D:\\playground\\bbm\\bbm.uvprojx", "D:\\playground\\bbm"]
+    sys.argv = ["keil2cmake.py", "/home/tvv/work2/gcov_proof/MDK-ARM/./gcov_proof.uvprojx", "/home/tvv/playground"]
     init()
     main()
 
